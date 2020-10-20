@@ -6,21 +6,50 @@ Add-Type -AssemblyName PresentationFramework
 #endregion
 
 #region Variables
-$ActionFGColor = "White"
-$ActionBGColor = "DarkGreen"
-$FinishedFGColor = "Green"
+$ActionFGColor      = "White"
+$ActionBGColor      = "DarkGreen"
+$FinishedFGColor    = "Green"
+$ElapsedTimeFGColor = "Cyan"
+
 $ExecutionStartTime = $(Get-Date)
+$TaskStartTime      = $(Get-Date)
 
-$TaskStartTime = $(Get-Date)
-
-$ISVModelToImport = 'C:\temp\Model'
+$ISVModelToImport   = 'C:\temp\Model'
 #endregion
 
+#region Enum
+Add-Type -TypeDefinition @"
+public enum RunProcess{
+    StartService        = 1,
+    StopService         = 2,
+    StartImportModel    = 3,
+    FinishedImportModel = 4
+    AllDone             = 5
+}
+"@
+#endregion
 
-#region Methods
+#region Titles Methods
 function StartImport($StartProcess) {
-    $ElapsedTimeFGColor = "Cyan"
-    Write-Host "****** Starting Process ******" -ForegroundColor $ElapsedTimeFGColor    
+    Write-Host "                                                                                                                        "   -ForegroundColor $ActionFGColor -BackgroundColor $ActionBGColor
+    Write-Host "************************************************************************************************************************"   -ForegroundColor $ActionFGColor -BackgroundColor $ActionBGColor
+    Write-Host "***************************************** Starting the process to import license ***************************************"   -ForegroundColor $ActionFGColor -BackgroundColor $ActionBGColor
+    Write-Host "************************************************************************************************************************"   -ForegroundColor $ActionFGColor -BackgroundColor $ActionBGColor
+    Write-Host "************************************************************************************************************************"   -ForegroundColor $ActionFGColor -BackgroundColor $ActionBGColor
+    Write-Host "*********** | Start at: '$(Get-Date)' |"                                                                                    -ForegroundColor $ActionFGColor -BackgroundColor $ActionBGColor
+    Write-Host "                                                                                                                        "   -ForegroundColor $ActionFGColor -BackgroundColor $ActionBGColor
+}
+
+function Get-Title($Title) {
+
+    Write-Host "                                                                                                                        "   -ForegroundColor $ElapsedTimeFGColor
+    Write-Host "************************************************************************************************************************"   -ForegroundColor $ElapsedTimeFGColor
+    Write-Host "                                                                                                                        "   -ForegroundColor $ElapsedTimeFGColor
+    Write-Host "*********** | $Title |"                                                                                                     -ForegroundColor $ElapsedTimeFGColor
+    Write-Host "*********** | Start at $(Get-Date) |"                                                                                       -ForegroundColor $ElapsedTimeFGColor
+    Write-Host "                                                                                                                        "   -ForegroundColor $ElapsedTimeFGColor
+    Write-Host "************************************************************************************************************************"   -ForegroundColor $ElapsedTimeFGColor
+    Write-Host "                                                                                                                        "   -ForegroundColor $ElapsedTimeFGColor
 }
 
 function ElapsedTime($TaskStartTime) {
@@ -33,7 +62,9 @@ function Finished($StartTime) {
     Write-Host "Finished!" -ForegroundColor $FinishedFGColor
     ElapsedTime $StartTime
 }
+#endregion Titles Methods
 
+#region Methods
 function Pause ($message) {
     # Check if running Powershell ISE
     if ($psISE) {
@@ -46,10 +77,20 @@ function Pause ($message) {
     }
 }
 
+function Read-Title($runProcess){
+    switch ($runProcess) {
+        [RunProcess]::StartService {  "Start Service" }
+        [RunProcess]::StopService {  "Stop Service" }
+        [RunProcess]::StartImportModel {  "Start Import Service" }
+        [RunProcess]::FinishedImportModel {  "Finished Import Service" }
+        [RunProcess]::AllDone {  "All Done" }
+        Default {}
+    }
+}
+
 function StartServices() {
-    Write-Host ""
-    Write-Host "*** Starting services... ***" -ForegroundColor $ActionFGColor -BackgroundColor $ActionBGColor
-    Write-Host ""
+    $Title = Read-Title [RunProcess]::StartService
+    Get-Title $Title
 
     $TaskStartTime = $(Get-Date)
 
@@ -58,14 +99,11 @@ function StartServices() {
     | Start-Service
 
     ElapsedTime $TaskStartTime
-
-    iisreset.exe
 }
 
 function StopServices() {
-    Write-Host ""
-    Write-Host "*** Stopping services... ***" -ForegroundColor $ActionFGColor -BackgroundColor $ActionBGColor
-    Write-Host ""
+    $Title = Read-Title [RunProcess]::StopService
+    Get-Title $Title
 
     $TaskStartTime = $(Get-Date)
 
@@ -116,6 +154,9 @@ function OpenFileDialog () {
 }
 
 function Import-DAXModel($ImportFileNames) {
+    $Title = Read-Title [RunProcess]::StartImportModel
+    Get-Title $Title
+
     $ReturnImport = ""
     ForEach ($FileName in $ImportFileNames) {
         if ($FileName -ne "Ok") {
@@ -128,56 +169,47 @@ function Import-DAXModel($ImportFileNames) {
 
 function Invoke-ImportModelUtil($ModelFileName) {
 
-    $ModelStore     = "$($env:SystemDrive)\AOSService\PackagesLocalDirectory"
-    $BinPath        = Join-Path -Path $ModelStore -ChildPath "Bin"
-    $ModelUtil      = Join-Path -Path $BinPath -ChildPath "ModelUtil.exe"    
-    $ModelToimport  = Join-Path -Path $ISVModelToImport -ChildPath $ModelFileName
+    $ModelStore = "$($env:SystemDrive)\AOSService\PackagesLocalDirectory"
+    $BinPath = Join-Path -Path $ModelStore -ChildPath "Bin"
+    $ModelUtil = Join-Path -Path $BinPath -ChildPath "ModelUtil.exe"    
+    $ModelToimport = Join-Path -Path $ISVModelToImport -ChildPath $ModelFileName
 
     $ReplaceArgs = @("-replace";
         "-MetadataStorePath=`"$ModelStore`"";
         "-file=`"$ModelToimport`"";
         "-force"
-        ) 
+    ) 
     & $ModelUtil $ReplaceArgs
 }
 #endregion
 
+# Show the Title 
 StartImport $(Get-Date)
 
-StopServices
-
+#Open dialog
 $ImportFileNames = OpenFileDialog
 
+#region Start import model
 if ($ImportFileNames[0] -eq "Ok") {
+    StopServices
+
     $ReturnModels = Import-DAXModel $ImportFileNames 
     
     foreach ($modelImported in $ReturnModels) {
         Write-Host $modelImported
     }
+
+    $Title = Read-Title [RunProcess]::FinishedImportModel
+    Get-Title $Title
+
+    StartServices
 }
+#endregion Start import model
 
-StartServices
-
-
-# $messageBox = [System.Windows.MessageBox]::Show('Do you want to stop the services?','Stop the services','YesNoCancel',[System.Windows.MessageBoxImage]::Exclamation)
-
-# if ($messageBox -eq [System.Windows.MessageBoxResult]::Yes)
-# {
-#     [System.Windows.MessageBox]::Show('Services stopped', 'Notication', 'OK', 'Info');
-# }
-# else {
-#     [System.Windows.MessageBox]::Show('No!!!');
-# }
-# StopServices 
-
-# Pause("Press any key to start the services...")
-
-# StartServices
-
-Write-Host "*****************" -ForegroundColor $ActionFGColor -BackgroundColor $ActionBGColor
-Write-Host "*** All done! ***" -ForegroundColor $ActionFGColor -BackgroundColor $ActionBGColor
-Write-Host "*****************" -ForegroundColor $ActionFGColor -BackgroundColor $ActionBGColor
+$Title = Read-Title [RunProcess]::AllDone
+Get-Title $Title
 
 ElapsedTime $ExecutionStartTime
 
-# Pause("Press any key to continue...")
+Pause("Press any key to continue...")
+
