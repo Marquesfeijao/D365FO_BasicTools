@@ -203,11 +203,11 @@ if ($ImportFileNames[0] -eq "Ok") {
     Get-Title $Title
 
     StartServices
+
+    $Title = Read-Title [RunProcess]::AllDone
+    Get-Title $Title
 }
 #endregion Start import model
-
-$Title = Read-Title [RunProcess]::AllDone
-Get-Title $Title
 
 ElapsedTime $ExecutionStartTime
 
