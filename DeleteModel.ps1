@@ -174,40 +174,43 @@ function Invoke-ImportModelUtil($ModelFileName) {
     $ModelUtil = Join-Path -Path $BinPath -ChildPath "ModelUtil.exe"    
     $ModelToimport = Join-Path -Path $ISVModelToImport -ChildPath $ModelFileName
 
-    $ReplaceArgs = @("-replace";
+    $ReplaceArgs = @("-delete";
         "-MetadataStorePath=`"$ModelStore`"";
-        "-file=`"$ModelToimport`"";
+        "-modelname=`"$ModelFileName`"";
         "-force"
     ) 
     & $ModelUtil $ReplaceArgs
 }
 #endregion
 
-# Show the Title 
-StartImport $(Get-Date)
+StopServices
+Invoke-ImportModelUtil "FourVisionHRPlus"
+StartServices
+# # Show the Title 
+# StartImport $(Get-Date)
 
-#Open dialog
-$ImportFileNames = OpenFileDialog
+# #Open dialog
+# $ImportFileNames = OpenFileDialog
 
-#region Start import model
-if ($ImportFileNames[0] -eq "Ok") {
-    StopServices
+# #region Start import model
+# if ($ImportFileNames[0] -eq "Ok") {
+#     StopServices
 
-    $ReturnModels = Import-DAXModel $ImportFileNames 
+#     $ReturnModels = Import-DAXModel $ImportFileNames 
     
-    foreach ($modelImported in $ReturnModels) {
-        Write-Host $modelImported
-    }
+#     foreach ($modelImported in $ReturnModels) {
+#         Write-Host $modelImported
+#     }
 
-    $Title = Read-Title [RunProcess]::FinishedImportModel
-    Get-Title $Title
+#     $Title = Read-Title [RunProcess]::FinishedImportModel
+#     Get-Title $Title
 
-    StartServices
+#     StartServices
 
-    $Title = Read-Title [RunProcess]::AllDone
-    Get-Title $Title
-}
-#endregion Start import model
+#     $Title = Read-Title [RunProcess]::AllDone
+#     Get-Title $Title
+# }
+# #endregion Start import model
 
 ElapsedTime $ExecutionStartTime
 
