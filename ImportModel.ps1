@@ -30,7 +30,7 @@ public enum RunProcess{
 #endregion
 
 #region Titles Methods
-function StartImport($StartProcess) {
+function StartImport ($StartProcess) {
     Write-Host "                                                                                                                        "   -ForegroundColor $ActionFGColor -BackgroundColor $ActionBGColor
     Write-Host "************************************************************************************************************************"   -ForegroundColor $ActionFGColor -BackgroundColor $ActionBGColor
     Write-Host "***************************************** Starting the process to import license ***************************************"   -ForegroundColor $ActionFGColor -BackgroundColor $ActionBGColor
@@ -40,7 +40,7 @@ function StartImport($StartProcess) {
     Write-Host "                                                                                                                        "   -ForegroundColor $ActionFGColor -BackgroundColor $ActionBGColor
 }
 
-function Get-Title($Title) {
+function Get-Title ($Title) {
 
     Write-Host "                                                                                                                        "   -ForegroundColor $ElapsedTimeFGColor
     Write-Host "************************************************************************************************************************"   -ForegroundColor $ElapsedTimeFGColor
@@ -52,20 +52,20 @@ function Get-Title($Title) {
     Write-Host "                                                                                                                        "   -ForegroundColor $ElapsedTimeFGColor
 }
 
-function ElapsedTime($TaskStartTime) {
+function ElapsedTime ($TaskStartTime) {
     $ElapsedTimeFGColor = "Cyan"
     $ElapsedTime = New-TimeSpan $TaskStartTime $(Get-Date)
     Write-Host "Elapsed time:$($ElapsedTime.ToString("hh\:mm\:ss"))" -ForegroundColor $ElapsedTimeFGColor
 }
 
-function Finished($StartTime) {
+function Finished ($StartTime) {
     Write-Host "Finished!" -ForegroundColor $FinishedFGColor
     ElapsedTime $StartTime
 }
 #endregion Titles Methods
 
 #region Methods
-function Pause($message) {
+function Pause ($message) {
     # Check if running Powershell ISE
     if ($psISE) {
         Add-Type -AssemblyName System.Windows.Forms
@@ -77,7 +77,7 @@ function Pause($message) {
     }
 }
 
-function Read-Title($runProcess) {
+function Read-Title ($runProcess) {
     switch ($runProcess) {
         [RunProcess]::StartService { "Start Service" }
         [RunProcess]::StopService { "Stop Service" }
@@ -88,7 +88,7 @@ function Read-Title($runProcess) {
     }
 }
 
-function StartServices() {
+function StartServices () {
     $Title = Read-Title [RunProcess]::StartService
     Get-Title $Title
 
@@ -100,8 +100,7 @@ function StartServices() {
 
     ElapsedTime $TaskStartTime
 }
-
-function StopServices() {
+function StopServices () {
     $Title = Read-Title [RunProcess]::StopService
     Get-Title $Title
 
@@ -114,7 +113,7 @@ function StopServices() {
     Finished $TaskStartTime
 }
 
-function CheckServices($ServicesStatus) {
+function CheckServices ($ServicesStatus) {
 
     Get-Service W3SVC `
         , aspnet_state `
@@ -134,26 +133,30 @@ function CheckServices($ServicesStatus) {
     }
 }
 
-function OpenFileDialog() {
+function OpenFileDialog () {
 
     $FileBrowser = New-Object System.Windows.Forms.OpenFileDialog -Property @{ 
         InitialDirectory = [Environment]::GetFolderPath('Desktop') 
         Filter           = 'Models (*.axmodel)| *.axmodel'
         Multiselect      = 1
     }
-
+    
     $FileBrowser.ShowDialog()
     
     if (![String]::IsNullOrEmpty($FileBrowser.FileName)) {
+        Get-Folder "Model"
+
         ForEach ($fileName in $FileBrowser.FileNames) {
-            Copy-Item $fileName -Destination $ISVModelToImport
+            if ($fileName -ne [System.String]::Format('{0}\{1}', $ISVModelToImport, [System.IO.Path]::GetFileName($fileName))) {
+                Copy-Item $fileName -Destination $ISVModelToImport -Force
+            }
         }
     }
 
     return $FileBrowser.SafeFileNames
 }
 
-function Import-DAXModel($ImportFileNames) {
+function Import-DAXModel ($ImportFileNames) {
     $Title = Read-Title [RunProcess]::StartImportModel
     Get-Title $Title
 
@@ -167,7 +170,7 @@ function Import-DAXModel($ImportFileNames) {
     return $ReturnImport
 }
 
-function Invoke-ImportModelUtil($ModelFileName) {
+function Invoke-ImportModelUtil ($ModelFileName) {
 
     $ModelStore = "$($env:SystemDrive)\AOSService\PackagesLocalDirectory"
     $BinPath = Join-Path -Path $ModelStore -ChildPath "Bin"
@@ -180,6 +183,16 @@ function Invoke-ImportModelUtil($ModelFileName) {
         "-force"
     ) 
     & $ModelUtil $ReplaceArgs
+}
+
+function Remove-AllItem () {
+    Remove-item $ISVModelToImport -Include *.axmodel -Recurse -Force
+}
+
+function Get-Folder ($FolderName) {
+    if (![System.IO.File]::Exists($ISVModelToImport)) {
+        New-Item -Path "C:\temp" -Name $FolderName -ItemType "directory"
+    }
 }
 #endregion
 
@@ -199,6 +212,8 @@ if ($ImportFileNames[0] -eq "Ok") {
         Write-Host $modelImported
     }
 
+    Remove-AllItem
+
     $Title = Read-Title [RunProcess]::FinishedImportModel
     Get-Title $Title
 
@@ -212,4 +227,3 @@ if ($ImportFileNames[0] -eq "Ok") {
 ElapsedTime $ExecutionStartTime
 
 Pause("Press any key to continue...")
-
